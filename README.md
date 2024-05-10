@@ -1,5 +1,5 @@
-# shooter
+# *shooter*
 
-## что то важное
+## *что то важное*
 
 simple game in pygame
