@@ -2,7 +2,6 @@ from pygame import *
 from random import randint
 from time import time as get_time
 
-
 SCREEN_SIZE = (700, 500)
 SPRITE_SIZE = 65
 
@@ -31,6 +30,7 @@ class GameSprite(sprite.Sprite):
         self.image = image.load(image_name)
         self.image = transform.scale(self.image, (SPRITE_SIZE, SPRITE_SIZE))
         self.speed = speed
+        self.image_name = image_name
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -52,18 +52,40 @@ class Player(GameSprite):
         new_bullet = Bullet('bullet.png', 7, self.rect.centerx-3, self.rect.y)
         new_bullet.image = transform.scale(new_bullet.image, (10, 30))
         bullets.add(new_bullet)
-        if chetchik2.counter >= 10:
+        if killed_counter.counter >= 10:
             new_bullet = Bullet('bullet.png', 7, self.rect.centerx-3, self.rect.y, 1)
             new_bullet.image = transform.scale(new_bullet.image, (10, 30))
             bullets.add(new_bullet)
             new_bullet = Bullet('bullet.png', 7, self.rect.centerx-3, self.rect.y, 2)
             new_bullet.image = transform.scale(new_bullet.image, (10, 30))
             bullets.add(new_bullet)
-    
 
 class Enemy(GameSprite):
+    def __init__(self, image_name, speed, x, y):
+        super().__init__(image_name, speed, x, y)
+        self.set_hp()
+
+    def set_hp(self):
+        self.hp = randint(1, 5)
+        if self.hp in (3, 4, 5):
+            self.speed = 1
+            x,y = self.rect.x, self.rect.y
+            self.image = image.load(self.image_name)
+            self.image = transform.scale(self.image, (SPRITE_SIZE, SPRITE_SIZE))
+            self.rect = self.image.get_rect()
+            self.rect.x = x 
+            self.rect.y = y
+        else:
+            self.speed = 3
+            x,y = self.rect.x, self.rect.y
+            self.image = image.load(self.image_name)
+            self.image = transform.scale(self.image, (SPRITE_SIZE//2, SPRITE_SIZE//2))
+            self.rect = self.image.get_rect()
+            self.rect.x = x 
+            self.rect.y = y
+
     def update(self):
-        self.rect.y += self.speed
+        self.rect.y += self.speed    
         if self.rect.y >= 500:
             self.rect.y = 0
             self.rect.x = randint(0, 635)
@@ -108,7 +130,6 @@ asteroids = sprite.Group()
 for i in range(2):
     asteroids.add(Asteroid('asteroid.png', randint(1,2), randint(0, 635), 0))
 
-
 font.init()
 
 class Counter:
@@ -124,10 +145,6 @@ class Counter:
     def draw(self):
         window.blit(self.image, self.pos)
 
-
-
-
-
 player = Player('rocket.png', 7, 10, 435)
 player.last_shoot = 0
 
@@ -141,8 +158,8 @@ display.set_caption('Shooter')
 missed_counter = Counter('Счетчик пропущенных:',10,10)
 missed_counter.set_text(24,(255,255,255))
 
-chetchik2 = Counter('Счетчик уничтоженных:',10,50)
-chetchik2.set_text(24,(255,255,255))
+killed_counter = Counter('Счетчик уничтоженных:',10,50)
+killed_counter.set_text(24,(255,255,255))
 
 mixer.init()
 mixer.music.load('space.ogg')
@@ -175,7 +192,7 @@ while game:
         player.reset()
         player.update()
         missed_counter.draw()
-        chetchik2.draw()    
+        killed_counter.draw()    
         bullets.update()
         asteroids.update()
         bullets.draw(window)
@@ -184,7 +201,7 @@ while game:
             lives.lives += 1
             heart.rect.y = 600
         lives.update()
-        if chetchik2.counter >= 50:
+        if killed_counter.counter >= 100:
             show_label('Победа', 270, 200)
             finish = True
         if missed_counter.counter >= 3:
@@ -194,7 +211,7 @@ while game:
         if sprite.spritecollide(player, ufos, False) or sprite.spritecollide(player, asteroids, False):
             for s in sprite.spritecollide(player, ufos, False) + sprite.spritecollide(player,asteroids, False):
                 s.rect.y = 0
-                s.rect.x = randint(1,635)
+                s.rect.x = randint(1,SCREEN_SIZE[0]-SPRITE_SIZE)
                 lives.lives -= 1
             
         if lives.lives <= 0:    
@@ -204,11 +221,18 @@ while game:
         
         list_monsters = sprite.groupcollide(ufos, bullets, False, True)
         for monster in list_monsters:
-            monster.rect.y = 0
-            monster.rect.x = randint(1, 635)
-            chetchik2.counter += 1
-            chetchik2.set_text(24,(255,255,255))
-        
+            monster.hp -= 1
+            if monster.hp <= 0:
+                monster.set_hp()
+                monster.hp = randint(1,5)
+                monster.rect.y = 0
+                monster.rect.x = randint(1, 635)
+                killed_counter.counter += 1
+                killed_counter.set_text(24,(255,255,255))
+                if killed_counter.counter == 20:
+                    for i in range(2):
+                        ufos.add(Enemy('ufo.png', 1, randint(0, SCREEN_SIZE[0]), 0))
+                            
     for e in event.get():
         if e.type == QUIT:
             game = False
